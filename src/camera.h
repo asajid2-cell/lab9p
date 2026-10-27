@@ -4,6 +4,9 @@
 #include "vector_util.h"
 #include <SFML/System.hpp>
 
+// Maps a world-space rectangle onto the window. The point mViewCenterWorld lands in the middle of
+// the window, and one pixel covers mWorldUnitsPerPixel world units on both axes. World and window
+// axes point the same way (both y down), so the conversion is just a scale and an offset.
 class Camera {
 public:
     Camera(const sf::Vector2f& windowSize, const sf::Vector2f& viewCenterWorld,
@@ -12,29 +15,45 @@ public:
           mViewCenterWorld{viewCenterWorld},
           mWorldUnitsPerPixel{worldUnitsPerPixel} {}
 
-    // TODO: all of these:
+    sf::Vector2f windowToWorld(const sf::Vector2f& pWindow) {
+        return mViewCenterWorld + (pWindow - mWindowSize * 0.5f) * mWorldUnitsPerPixel;
+    }
 
-    sf::Vector2f windowToWorld(const sf::Vector2f& pWindow) { return {}; };
+    sf::Vector2f worldToWindow(const sf::Vector2f& pWorld) {
+        return (pWorld - mViewCenterWorld) / mWorldUnitsPerPixel + mWindowSize * 0.5f;
+    }
 
-    sf::Vector2f worldToWindow(const sf::Vector2f& pWorld) { return {}; };
+    sf::Vector2f windowPercentToWorld(const sf::Vector2f& pWindowPercent) {
+        return windowToWorld(pWindowPercent * mWindowSize);
+    }
 
-    sf::Vector2f windowPercentToWorld(const sf::Vector2f& pWindowPercent) { return {}; };
+    sf::Vector2f worldToWindowPercent(const sf::Vector2f& pWorld) {
+        return worldToWindow(pWorld) / mWindowSize;
+    }
 
-    sf::Vector2f worldToWindowPercent(const sf::Vector2f& pWorld) { return {}; };
+    void translateWorld(const sf::Vector2f& deltaWorld) { mViewCenterWorld += deltaWorld; }
 
-    void translateWorld(const sf::Vector2f& deltaWorld) {};
+    void translateWindow(const sf::Vector2f& deltaScreen) {
+        translateWorld(deltaScreen * mWorldUnitsPerPixel);
+    }
 
-    void translateWindow(const sf::Vector2f& deltaScreen) {};
+    void translateWindowPercent(const sf::Vector2f& deltaScreenPercent) {
+        translateWindow(deltaScreenPercent * mWindowSize);
+    }
 
-    void translateWindowPercent(const sf::Vector2f& deltaScreenPercent) {};
+    // Move the camera so the window point pWindow shows the world point pWorld. Any other point
+    // keeps its relative offset, since the scale is untouched.
+    void setCamera(const sf::Vector2f& pWorld, const sf::Vector2f& pWindow) {
+        mViewCenterWorld = pWorld - (pWindow - mWindowSize * 0.5f) * mWorldUnitsPerPixel;
+    }
 
-    void setCamera(const sf::Vector2f& pWorld, const sf::Vector2f& pWindow) {};
+    void setCameraPercent(const sf::Vector2f& pWorld, const sf::Vector2f& pWindowPercent) {
+        setCamera(pWorld, pWindowPercent * mWindowSize);
+    }
 
-    void setCameraPercent(const sf::Vector2f& pWorld, const sf::Vector2f& pWindowPercent) {};
+    void setCameraCenter(const sf::Vector2f& pWorld) { mViewCenterWorld = pWorld; }
 
-    void setCameraCenter(const sf::Vector2f& pWorld) {};
-
-    sf::Vector2f getCameraCenter() const { return {}; };
+    sf::Vector2f getCameraCenter() const { return mViewCenterWorld; }
 
 private:
     sf::Vector2f mWindowSize;       // size of the window in screen pixels (i.e. window coords)

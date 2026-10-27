@@ -123,25 +123,28 @@ int main() {
             player.velocity.y += GRAVITY;
         }
         player.update();
-        // camera
+        // Camera. Where the player's center is on screen, as a percentage of the window. The
+        // player is drawn from its feet, so its center is half a body above its position.
+        const sf::Vector2f playerCenter = camera.worldToWindowPercent(
+            {player.position.x, player.position.y - PLAYER_WIDTH * 0.5f});
+        const float xPercent = playerCenter.x;
+        const float leftSoft = SOFT_LIMIT_PERCENT;
+        const float rightSoft = 1.f - SOFT_LIMIT_PERCENT;
+        const float leftHard = HARD_LIMIT_PERCENT;
+        const float rightHard = 1.f - HARD_LIMIT_PERCENT;
 
-        // TODO: Remove this line and replace it with code that determines if the player's (center)
-        // is between the two green lines (open space), in the soft exclusion zones (between the
-        // green and red lines), or in the hard exclusion zones (beyond either of the red lines).
-        //
-        // If the player is in the open zone, the camera does not need to move.
-        //
-        // If the player is in the soft exclusion zones, the camera should softly translate over
-        // multiple frames (via an exponential moving average) until the player's center is aligned
-        // with the violated soft boundary. Use SOFT_CAMERA_ALPHA for the alpha value.
-        //
-        // If the player is in the hard exclusion zones, the camera should hard-adjust so that
-        // the player's center is always kept at most *at* the red lines. This means that the
-        // player center must NEVER pass the red lines.
-        //
-        // Use SOFT_LIMIT_PERCENT and HARD_LIMIT_PERCENT to parameterize the green and red
-        // line positions.
-        camera.setCameraCenter({player.position.x, WINDOW_HEIGHT * 0.5f});
+        // Dead zone: nothing to do. Soft zones: move the camera a fraction of the remaining
+        // distance each frame, which is the exponential moving average and damps the motion.
+        // Hard zones: move the whole way so the center can never pass a red line.
+        if (xPercent < leftHard) {
+            camera.translateWindowPercent({xPercent - leftHard, 0.f});
+        } else if (xPercent < leftSoft) {
+            camera.translateWindowPercent({SOFT_CAMERA_ALPHA * (xPercent - leftSoft), 0.f});
+        } else if (xPercent > rightHard) {
+            camera.translateWindowPercent({xPercent - rightHard, 0.f});
+        } else if (xPercent > rightSoft) {
+            camera.translateWindowPercent({SOFT_CAMERA_ALPHA * (xPercent - rightSoft), 0.f});
+        }
 
         worldView.setCenter(camera.getCameraCenter());
         window.clear(sf::Color::Black);
